@@ -1,0 +1,7 @@
+execfile("MancalaGUI.py")
+execfile("TicTacToe.py")
+player1 = Player(1, Player.ABPRUNE, 4)
+player2 = Player(2, Player.ABPRUNE, 4)
+T = TTTBoard()
+# T.hostGame(player1, player2)
+startGame(player1, player2)
