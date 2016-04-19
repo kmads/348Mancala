@@ -261,15 +261,57 @@ class MancalaPlayer(Player):
 
     def score(self, board):
         """ Evaluate the Mancala board for this player """
-        # Currently this function just calls Player's score
-        # function.  You should replace the line below with your own code
-        # for evaluating the board
-        #### GO HERE NEXT#####
-        # dumb implementation (heuristic) in ppt
-        # TODO: Use scoreCups and P1/P2Cups from ManaclaBoard.py
-        # Ideas: difference in scoreCups (dumb), also if one of your cups is empty, try to land in it. 
-        # If opponent's cup is getting low, try to land in it so they can't land in an empty? Stuff like that.
-        # Open up a pit for future turn?
+        # Calculates the score from the perspective of Player, assuming they have just made a move
+        # Considers overall Mancala difference, and if Player has set up the other player to earn lots of points
+        score = 0
+
+        if(self.num == 1):
+            score += board.scoreCups[0] - board.scoreCups[1]      	# basic overall score gained *after* this turn
+            # check how much P2 can now gain:
+            for i in range(0, len(board.P2cups)):
+                if board.P2cups[i] == 0:   # empty cups on the other side
+                    for j in range(0, len(board.P2cups)):   # look for starting cups on the other side that can land in the empty cup
+                        if j < i and (board.P2cups[j] == i-j or board.P2cups[j] == 14 + i-j):
+                            score -= board.P1Cups[j]
+
+                elif (6 - i) < board.P2cups[i] < (12 - i):  # if P2 lands on P1's side P2 added one to its Mancala
+                    score -= 1			                    # without adding one to P1's Mancala - lose points
+
+                # If the pebbles end at the mancala, player gets one more turn and
+                # no pebble is given to the opponent lose some more points since the
+                # player gets an extra turn
+                elif board.P1cups[i] == (6 - i):
+                    score -= 4
+
+                # If the pebbles end at the mancala after two full rounds, lose fewer points
+                # since the player gave the opponents some pebbles as well
+                elif board.P1cups[i] == (20 - i):
+                    score -= 2
+
+        else:   # from the perspective of P2
+            score += board.scoreCups[1] - board.scoreCups[0]      	# basic overall score gained *after* this turn
+
+            for i in range(0, len(board.P1cups)):   # empty cups on the other side
+                if board.P1cups[i] == 0:
+                    # find starting cups on the other side that can land in the empty cup
+                    for j in range(0, len(board.P1cups)):
+                        if j < i and (board.P1cups[j] == i-j or board.P1cups[j] == 14 + i-j):
+                            score -= board.P2Cups
+
+                elif (6 - i) < board.P1cups[i] < (12 - i):# if P2 lands on P1's side P2 added one to its Mancala
+                    score -= 1			                    # without adding one to P1's Mancala - lose points
+
+                # If the pebbles end at the mancala, player gets one more turn and
+                # no pebble is given to the opponent lose some more points since the
+                # player gets an extra turn
+                elif board.P1cups[i] == (6 - i):
+                    score -= 4
+
+                # If the pebbles end at the mancala after two full rounds, lose fewer points
+                # since the player gave the opponents some pebbles as well
+                elif board.P1cups[i] == (20 - i):
+                    score -= 1.5
+
         print "Calling score in MancalaPlayer"
         return Player.score(self, board)
         
