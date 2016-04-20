@@ -246,8 +246,10 @@ class Player:
             # function.  You may use whatever search algorithm and scoring
             # algorithm you like.  Remember that your player must make
             # each move in about 10 seconds or less.
-            print "Custom player not yet implemented"
-            return -1
+            # Use AB pruning with a ply of 9
+            val, move = self.alphaBetaMove(board, 9)
+            print "chose move", move, " with value", val
+            return move
         else:
             print "Unknown player type"
             return -1
