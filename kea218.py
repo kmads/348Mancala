@@ -265,7 +265,7 @@ class kea218(Player):
         score = 0
 
         if(self.num == 1):
-            score += board.scoreCups[0] - board.scoreCups[1]        # basic overall score gained *after* this turn
+            score += board.scoreCups[0] - board.scoreCups[1]      	# basic overall score gained *after* this turn
             # check how much P2 can now gain:
             for i in range(0, len(board.P2Cups)):
                 if board.P2Cups[i] == 0:   # empty cups on the other side
@@ -274,7 +274,7 @@ class kea218(Player):
                             score -= board.P1Cups[j]
 
                 elif (6 - i) < board.P2Cups[i] < (12 - i):  # if P2 lands on P1's side P2 added one to its Mancala
-                    score -= 1                              # without adding one to P1's Mancala - lose points
+                    score -= 1			                    # without adding one to P1's Mancala - lose points
 
                 # If the pebbles end at the mancala, player gets one more turn and
                 # no pebble is given to the opponent lose some more points since the
@@ -288,7 +288,7 @@ class kea218(Player):
                     score -= 2
 
         else:   # from the perspective of P2
-            score += board.scoreCups[1] - board.scoreCups[0]        # basic overall score gained *after* this turn
+            score += board.scoreCups[1] - board.scoreCups[0]      	# basic overall score gained *after* this turn
 
             for i in range(0, len(board.P1Cups)):   # empty cups on the other side
                 if board.P1Cups[i] == 0:
@@ -298,7 +298,7 @@ class kea218(Player):
                             score -= board.P2Cups[j]
 
                 elif (6 - i) < board.P1Cups[i] < (12 - i):# if P2 lands on P1's side P2 added one to its Mancala
-                    score -= 1                              # without adding one to P1's Mancala - lose points
+                    score -= 1			                    # without adding one to P1's Mancala - lose points
 
                 # If the pebbles end at the mancala, player gets one more turn and
                 # no pebble is given to the opponent lose some more points since the
@@ -311,6 +311,6 @@ class kea218(Player):
                 elif board.P1Cups[i] == (20 - i):
                     score -= 1.5
 
-        # print "Calling score in MancalaPlayer"
+        print "Calling score in MancalaPlayer"
         return score
         
