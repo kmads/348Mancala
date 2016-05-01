@@ -128,13 +128,18 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     # print "I'm simply returning initial_board for demonstration purposes."
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
-    subsquare = int(math.sqrt(size))
-    found = False
-    result = True
     domains = {}
     for row in range(size):
         for col in range(size):
             domains[(row, col)] = [i+1 for i in range(size)]
+    return solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
+
+def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains):
+    BoardArray = initial_board.CurrentGameBoard
+    size = len(BoardArray)
+    subsquare = int(math.sqrt(size))
+    found = False
+    result = True
     for row in range(size):
         for col in range(size):
             if BoardArray[row][col]==0:
@@ -153,7 +158,7 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
                     if found == False:
                         initial_board.set_value(row, col, val)
                         BoardArray = initial_board.CurrentGameBoard
-                        result = solve(initial_board, forward_checking, MRV, Degree, LCV)
+                        result = solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                         if result == False:
                             initial_board.set_value(row, col, 0)
                             BoardArray = initial_board.CurrentGameBoard
@@ -169,7 +174,6 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
                                             if num != val:
                                                 temp.append(num)
                                         domains[(row1, col)] = copy.deepcopy(temp)
-                                        print "After removing: ", row1, col, domains[(row1, col)]
                                 # remove the value from the domains of all open variables in the same col
                                 for col1 in range(size):
                                     if domains[(row, col1)] != "closed" and val in domains[(row, col1)]:
