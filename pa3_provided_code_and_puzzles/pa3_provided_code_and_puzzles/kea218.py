@@ -4,7 +4,7 @@
 # Group work statement: All group members were present and contributing during all work on this project.
 
 #!/usr/bin/env python
-import struct, string, math
+import struct, string, math, copy
 
 class SudokuBoard:
     """This will be the sudoku board game object your player will manipulate."""
@@ -13,6 +13,7 @@ class SudokuBoard:
       """the constructor for the SudokuBoard"""
       self.BoardSize = size #the size of the board
       self.CurrentGameBoard= board #the current state of the game board
+
 
     def set_value(self, row, col, value):
         """This function will create a new sudoku board object with the input
@@ -125,4 +126,70 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     # print "Your code will solve the initial_board here!"
     # print "Remember to return the final board (the SudokuBoard object)."
     # print "I'm simply returning initial_board for demonstration purposes."
+    BoardArray = initial_board.CurrentGameBoard
+    size = len(BoardArray)
+    subsquare = int(math.sqrt(size))
+    found = False
+    result = True
+    domains = {}
+    for row in range(size):
+        for col in range(size):
+            domains[(row, col)] = [i+1 for i in range(size)]
+    for row in range(size):
+        for col in range(size):
+            if BoardArray[row][col]==0:
+                SquareRow = row // subsquare
+                SquareCol = col // subsquare
+                for val in domains[(row, col)]:
+                    found = False
+                    if val in BoardArray[row]:  # if i is already in the row
+                        found = True
+                    if val in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
+                        found = True
+                    for i in range(subsquare):   # if i is already in the square
+                        for j in range(subsquare):
+                            if((BoardArray[SquareRow*subsquare+i][SquareCol*subsquare+j] == val)):
+                                found = True
+                    if found == False:
+                        initial_board.set_value(row, col, val)
+                        BoardArray = initial_board.CurrentGameBoard
+                        result = solve(initial_board, forward_checking, MRV, Degree, LCV)
+                        if result == False:
+                            initial_board.set_value(row, col, 0)
+                            BoardArray = initial_board.CurrentGameBoard
+                        else:
+                            print "Officially Set Value:", row, col, BoardArray[row][col]
+                            domains[(row, col)] = "closed"
+                            if(forward_checking == True):
+                                # remove the value from the domains of all open variables in the same row
+                                for row1 in range(size):
+                                    if domains[(row1, col)] != "closed" and val in domains[(row1, col)]:
+                                        temp = []
+                                        for num in domains[(row1, col)]:
+                                            if num != val:
+                                                temp.append(num)
+                                        domains[(row1, col)] = copy.deepcopy(temp)
+                                        print "After removing: ", row1, col, domains[(row1, col)]
+                                # remove the value from the domains of all open variables in the same col
+                                for col1 in range(size):
+                                    if domains[(row, col1)] != "closed" and val in domains[(row, col1)]:
+                                        temp = []
+                                        for num in domains[(row, col1)]:
+                                            if num != val:
+                                                temp.append(num)
+                                        domains[(row, col1)] = temp
+                                # remove the value from the domains of all open variables in the same col
+                                for i in range(subsquare):
+                                    for j in range(subsquare):
+                                        if domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] != "closed" and val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
+                                            temp = []
+                                            for num in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
+                                                if num != val:
+                                                    temp.append(num)
+                                            domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = temp
+                            break
+
+                if BoardArray[row][col]==0:
+                    return False
+
     return initial_board
