@@ -163,7 +163,7 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                             initial_board.set_value(row, col, 0)
                             BoardArray = initial_board.CurrentGameBoard
                         else:
-                            print "Officially Set Value:", row, col, BoardArray[row][col]
+                            # print "Officially Set Value:", row, col, BoardArray[row][col]
                             domains[(row, col)] = "closed"
                             if(forward_checking == True):
                                 # remove the value from the domains of all open variables in the same row
