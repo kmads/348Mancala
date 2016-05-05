@@ -140,22 +140,22 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
     subsquare = int(math.sqrt(size))
     found = False
     result = True
-    iterDomains = copy.deepcopy(domains)
-    # if MRV == True:
-    #     iterDomains = sortByMRV(domains)
+    # iterDomains = copy.copy(domains)
+    if MRV == True:
+        domains = sortByMRV(domains)
     # if LCV == True:
     #     iterDomains = sortByLCV(domains)
 
     # if MRV == False and LCV == False and Degree == False:
         # for row in range(size):
         #     for col in range(size):
-    for cell in iterDomains:
+    for cell in domains:
         row = cell[0]
         col = cell[1]
         if BoardArray[row][col]==0:
             SquareRow = row // subsquare
             SquareCol = col // subsquare
-            for val in iterDomains[cell]:
+            for val in domains[cell]:
                 found = False
                 if val in BoardArray[row]:  # if i is already in the row
                     found = True
@@ -210,9 +210,11 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
 
 
 def sortByMRV(domains):
-    sorted = []
+    sorted = {}
     for k in sorted(domains, key=lambda k: len(domains[k]), reverse=False):
         if(len(domains[k]) > 0):
-            sorted.append((k[0], k[1], domains[k]))
+            sorted[k] = domains[k]
+    return sorted
 
 # def sortByLCV(domains):
+# sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
