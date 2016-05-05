@@ -140,60 +140,79 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
     subsquare = int(math.sqrt(size))
     found = False
     result = True
-    for row in range(size):
-        for col in range(size):
-            if BoardArray[row][col]==0:
-                SquareRow = row // subsquare
-                SquareCol = col // subsquare
-                for val in domains[(row, col)]:
-                    found = False
-                    if val in BoardArray[row]:  # if i is already in the row
-                        found = True
-                    if val in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
-                        found = True
-                    for i in range(subsquare):   # if i is already in the square
-                        for j in range(subsquare):
-                            if((BoardArray[SquareRow*subsquare+i][SquareCol*subsquare+j] == val)):
-                                found = True
-                    if found == False:
-                        initial_board.set_value(row, col, val)
-                        BoardArray = initial_board.CurrentGameBoard
-                        result = solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
-                        if result == False:
-                            initial_board.set_value(row, col, 0)
-                            BoardArray = initial_board.CurrentGameBoard
-                        else:
-                            # print "Officially Set Value:", row, col, BoardArray[row][col]
-                            domains[(row, col)] = "closed"
-                            if(forward_checking == True):
-                                # remove the value from the domains of all open variables in the same row
-                                for row1 in range(size):
-                                    if domains[(row1, col)] != "closed" and val in domains[(row1, col)]:
-                                        temp = []
-                                        for num in domains[(row1, col)]:
-                                            if num != val:
-                                                temp.append(num)
-                                        domains[(row1, col)] = copy.deepcopy(temp)
-                                # remove the value from the domains of all open variables in the same col
-                                for col1 in range(size):
-                                    if domains[(row, col1)] != "closed" and val in domains[(row, col1)]:
-                                        temp = []
-                                        for num in domains[(row, col1)]:
-                                            if num != val:
-                                                temp.append(num)
-                                        domains[(row, col1)] = temp
-                                # remove the value from the domains of all open variables in the same col
-                                for i in range(subsquare):
-                                    for j in range(subsquare):
-                                        if domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] != "closed" and val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
-                                            temp = []
-                                            for num in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
-                                                if num != val:
-                                                    temp.append(num)
-                                            domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = temp
-                            break
+    iterDomains = copy.deepcopy(domains)
+    # if MRV == True:
+    #     iterDomains = sortByMRV(domains)
+    # if LCV == True:
+    #     iterDomains = sortByLCV(domains)
 
-                if BoardArray[row][col]==0:
-                    return False
+    # if MRV == False and LCV == False and Degree == False:
+        # for row in range(size):
+        #     for col in range(size):
+    for cell in iterDomains:
+        row = cell[0]
+        col = cell[1]
+        if BoardArray[row][col]==0:
+            SquareRow = row // subsquare
+            SquareCol = col // subsquare
+            for val in iterDomains[cell]:
+                found = False
+                if val in BoardArray[row]:  # if i is already in the row
+                    found = True
+                if val in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
+                    found = True
+                for i in range(subsquare):   # if i is already in the square
+                    for j in range(subsquare):
+                        if((BoardArray[SquareRow*subsquare+i][SquareCol*subsquare+j] == val)):
+                            found = True
+                if found == False:
+                    initial_board.set_value(row, col, val)
+                    BoardArray = initial_board.CurrentGameBoard
+                    result = solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
+                    if result == False:
+                        initial_board.set_value(row, col, 0)
+                        BoardArray = initial_board.CurrentGameBoard
+                    else:
+                        # print "Officially Set Value:", row, col, BoardArray[row][col]
+                        domains[(row, col)] = []
+                        if(forward_checking == True):
+                            # remove the value from the domains of all open variables in the same row
+                            for row1 in range(size):
+                                if domains[(row1, col)] != [] and val in domains[(row1, col)]:
+                                    temp = []
+                                    for num in domains[(row1, col)]:
+                                        if num != val:
+                                            temp.append(num)
+                                    domains[(row1, col)] = copy.deepcopy(temp)
+                            # remove the value from the domains of all open variables in the same col
+                            for col1 in range(size):
+                                if domains[(row, col1)] != [] and val in domains[(row, col1)]:
+                                    temp = []
+                                    for num in domains[(row, col1)]:
+                                        if num != val:
+                                            temp.append(num)
+                                    domains[(row, col1)] = temp
+                            # remove the value from the domains of all open variables in the same col
+                            for i in range(subsquare):
+                                for j in range(subsquare):
+                                    if domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] != [] and val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
+                                        temp = []
+                                        for num in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
+                                            if num != val:
+                                                temp.append(num)
+                                        domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = temp
+                        break
+
+            if BoardArray[row][col]==0:
+                return False
 
     return initial_board
+
+
+def sortByMRV(domains):
+    sorted = []
+    for k in sorted(domains, key=lambda k: len(domains[k]), reverse=False):
+        if(len(domains[k]) > 0):
+            sorted.append((k[0], k[1], domains[k]))
+
+# def sortByLCV(domains):
