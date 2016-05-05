@@ -197,11 +197,11 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
 
 
 def sortByMRV(domains):
-    sorted = {}
+    sorted_domains = {}
     for k in sorted(domains, key=lambda k: len(domains[k]), reverse=False):
         if(len(domains[k]) > 0):
-            sorted[k] = domains[k]
-    return sorted
+            sorted_domains[k] = domains[k]
+    return sorted_domains
 
 def sortByLCV(row, col, domains, size):
 # sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
