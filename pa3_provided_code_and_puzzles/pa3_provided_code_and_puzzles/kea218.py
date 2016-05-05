@@ -153,10 +153,13 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
         for row in range(size):
             for col in range(size):
                 if BoardArray[row][col]==0:
+                    print domains, 'domains before sorted vals'
                     sortedVals = sortByLCV(row, col, domains, size)
+                    print sortedVals, 'domains after sorted vals'
                     for val in sortedVals:
                         found = checkBoard(row, col, val, BoardArray)
                         initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
+                        print domains,"domains after checkVal"
                         BoardArray = initial_board.CurrentGameBoard
                         if BoardArray[row][col] != 0:
                             break
@@ -249,6 +252,7 @@ def checkBoard(row, col, val, BoardArray):
 
 
 def forwardChecking(row, col, val, domains, BoardArray):
+    # print domains, "*"
     size = len(BoardArray)
     subsquare = int(math.sqrt(size))
     SquareRow = row // subsquare
@@ -277,6 +281,7 @@ def forwardChecking(row, col, val, domains, BoardArray):
                     if num != val:
                         temp.append(num)
                 domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = copy.copy(temp)
+    # print domains, "**"
     return domains
 
 def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains):
@@ -290,5 +295,7 @@ def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree,
             domains[(row, col)] = []
             if(forward_checking == True):
                 # remove the value from the domains of all open variables in the same row
+                print domains, 'before forward checking'
                 domains = forwardChecking(row, col, val, domains, BoardArray)
+                print domains, 'after forward checking'
     return initial_board, domains
