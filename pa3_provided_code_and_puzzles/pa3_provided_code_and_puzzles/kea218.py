@@ -135,8 +135,8 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
     if MRV == True:
-        keys = sortByMRV(domains)
-        for cell in keys:
+        mrvKeys = sortByMRV(domains)
+        for cell in mrvKeys:
             row = cell[0]
             col = cell[1]
             if BoardArray[row][col] == 0:
@@ -166,21 +166,20 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                     if BoardArray[row][col] == 0:
                         return False
 
-    # if Degree == True:
-    #     # the variable with the most open variables in its row, col, and square
-    #     domains = sortByDegree(domains, BoardArray)
-    #     for cell in domains:
-    #         row = cell[0]
-    #         col = cell[1]
-    #         if BoardArray[row][col]==0:
-    #             for val in domains[(row, col)]:
-    #                 found = checkBoard(row, col, val, BoardArray)
-    #                 initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-    #                 BoardArray = initial_board.CurrentGameBoard
-    #                 if BoardArray[row][col] != 0:
-    #                     break
-    #             if BoardArray[row][col]==0:
-    #                 return False
+    if Degree == True:
+        # the variable with the most open variables in its row, col, and square
+        degKeys = sortByDegree(BoardArray)
+        for cell in degKeys:
+            row = cell[0]
+            col = cell[1]
+            for val in domains[(row, col)]:
+                found = checkBoard(row, col, val, BoardArray)
+                initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
+                BoardArray = initial_board.CurrentGameBoard
+                if BoardArray[row][col] != 0:
+                    break
+            if BoardArray[row][col]==0:
+                return False
 
     # if MRV == False and LCV == False and Degree == False:
     for row in range(size):
@@ -194,8 +193,6 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                         break
                 if BoardArray[row][col]==0:
                     return False
-
-
     return initial_board
 
 
@@ -206,26 +203,51 @@ def sortByMRV(domains):
 def sortByLCV(row, col, domains, size):
 # sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
     constraints ={}
-    sortVals = []
     subsquare = int(math.sqrt(size))
     SquareRow = row // subsquare
     SquareCol = col // subsquare
     for val in domains[(row, col)]:
         count = 0
         for row1 in range(size):
-            if row1 != row and val in domains[(row1, col)]:
+            if val in domains[(row1, col)]:
                 count += 1
         for col1 in range(size):
-            if col1 != col and val in domains[(row, col1)]:
+            if val in domains[(row, col1)]:
                 count += 1
         for i in range(subsquare):   # if i is already in the square
             for j in range(subsquare):
                 if val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
                     count += 1
         constraints[val] = count
-    for k in sorted(constraints, key=lambda k: constraints[k], reverse=True):
-        sortVals.append(k)
-    return sortVals
+    return sorted(constraints, key=lambda k: constraints[k], reverse=True)
+
+
+def sortByDegree(BoardArray):
+# sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
+# *** remove double counting
+    openVars ={}
+    size = len(BoardArray)
+    subsquare = int(math.sqrt(size))
+    for row in range(size):
+        for col in range(size):
+            if BoardArray[row][col] == 0:
+                count = 0
+                SquareRow = row // subsquare
+                SquareCol = col // subsquare
+                for col1 in BoardArray[row]:  # if i is already in the row
+                    if col1 == 0:
+                        count += 1
+                for row1 in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
+                    if row1 == 0:
+                        count += 1
+                for i in range(subsquare):   # if i is already in the square
+                    for j in range(subsquare):
+                        row1 = SquareRow*subsquare+i
+                        col1 = SquareCol*subsquare+j
+                        if BoardArray[row1][col1] == 0:
+                            count += 1
+                openVars[(row, col)] = count
+    return sorted(openVars, key=lambda k: openVars[k], reverse=True)
 
 
 
@@ -282,6 +304,7 @@ def forwardChecking(row, col, val, domains, BoardArray):
 def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains):
     if found == False:
         initial_board.set_value(row, col, val)
+        # assignments += 1
         tempDomains = copy.copy(domains)
         domains[(row, col)] = []
         BoardArray = initial_board.CurrentGameBoard
