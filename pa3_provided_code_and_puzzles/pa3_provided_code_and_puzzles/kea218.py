@@ -135,8 +135,8 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
     if MRV == True:
-        domains = sortByMRV(domains)
-        for cell in domains:
+        keys = sortByMRV(domains)
+        for cell in keys:
             row = cell[0]
             col = cell[1]
             if BoardArray[row][col] == 0:
@@ -200,11 +200,8 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
 
 
 def sortByMRV(domains):
-    sorted_domains = {}
-    for k in sorted(domains, key=lambda k: len(domains[k]), reverse=False):
-        if(len(domains[k]) > 0):
-            sorted_domains[k] = domains[k]
-    return sorted_domains
+    return sorted(domains, key=lambda k: len(domains[k]), reverse=False)
+
 
 def sortByLCV(row, col, domains, size):
 # sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
@@ -299,7 +296,3 @@ def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree,
             domains = copy.copy(tempDomains)
 
     return initial_board, domains
-
-
-sb = init_board("input_puzzles/input_puzzles/easy/easy/4_4.sudoku")
-fb = solve(sb, True, False, False, True)
