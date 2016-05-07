@@ -147,10 +147,7 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
 
 def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains):
     # Upper bound on consistency checks
-    # if initial_board.consistencyChecks > 1000000:
-    #     print "Terminating..."
-    #     print initial_board.consistencyChecks
-    #     return False
+    maxCon = 1000000
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
     if MRV == True:
@@ -169,7 +166,7 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                 if BoardArray[row][col] == 0:
                     return False
     if LCV == True:
-    # the value that is in the fewest domains for other open variables in its row, col, and square
+        # the value that is in the fewest domains for other open variables in its row, col, and square
         for row in range(size):
             for col in range(size):
                 if BoardArray[row][col]==0:
@@ -209,13 +206,14 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
             for col in range(size):
                 if BoardArray[row][col]==0:
                     for val in domains[(row, col)]:
-                        initial_board.consistencyChecks += 1
-                        found = checkBoard(row, col, val, BoardArray)
-                        initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                        BoardArray = initial_board.CurrentGameBoard
-                        if BoardArray[row][col] != 0:
-                            break
-                    if BoardArray[row][col]==0:
+                        if initial_board.consistencyChecks < maxCon:
+                            initial_board.consistencyChecks += 1
+                            found = checkBoard(row, col, val, BoardArray)
+                            initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
+                            BoardArray = initial_board.CurrentGameBoard
+                            if BoardArray[row][col] != 0:
+                                break
+                    if BoardArray[row][col]==0 and initial_board.consistencyChecks < maxCon:
                         return False
     return initial_board
 
