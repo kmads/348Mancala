@@ -13,6 +13,7 @@ class SudokuBoard:
       """the constructor for the SudokuBoard"""
       self.BoardSize = size #the size of the board
       self.CurrentGameBoard= board #the current state of the game board
+      self.consistencyChecks = 0
 
 
     def set_value(self, row, col, value):
@@ -125,13 +126,31 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     arguments). Returns the resulting board solution. """
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
+    subsquare = int(math.sqrt(size))
     domains = {}
     for row in range(size):
         for col in range(size):
-            domains[(row, col)] = [i+1 for i in range(size)]
+            if BoardArray[row][col] == 0:
+                domains[(row, col)] = [i+1 for i in range(size)]
+            else:
+                domains[(row,col)] = []
+
+    # Remove initially set values from the domains of affected cells (same row, col, square)
+    if forward_checking:
+        for row in range(size):
+            for col in range(size): 
+                val = BoardArray[row][col]
+                if val != 0:
+                    domains = forwardChecking(row,col,val,domains,BoardArray)
+
     return solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
 
 def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains):
+    # Upper bound on consistency checks
+    # if initial_board.consistencyChecks > 1000000:
+    #     print "Terminating..."
+    #     print initial_board.consistencyChecks
+    #     return False
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
     if MRV == True:
@@ -141,6 +160,7 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
             col = cell[1]
             if BoardArray[row][col] == 0:
                 for val in domains[(row, col)]:
+                    initial_board.consistencyChecks += 1
                     found = checkBoard(row, col, val, BoardArray)
                     initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
                     BoardArray = initial_board.CurrentGameBoard
@@ -157,6 +177,7 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
                     sortedVals = sortByLCV(row, col, domains, size)
                     # print sortedVals, 'domains after sorted vals'
                     for val in sortedVals:
+                        initial_board.consistencyChecks += 1
                         found = checkBoard(row, col, val, BoardArray)
                         initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
                         # print domains,"domains after checkVal"
@@ -173,6 +194,7 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
             row = cell[0]
             col = cell[1]
             for val in domains[(row, col)]:
+                initial_board.consistencyChecks += 1
                 found = checkBoard(row, col, val, BoardArray)
                 initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
                 BoardArray = initial_board.CurrentGameBoard
@@ -181,18 +203,20 @@ def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
             if BoardArray[row][col]==0:
                 return False
 
-    # if MRV == False and LCV == False and Degree == False:
-    for row in range(size):
-        for col in range(size):
-            if BoardArray[row][col]==0:
-                for val in domains[(row, col)]:
-                    found = checkBoard(row, col, val, BoardArray)
-                    initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                    BoardArray = initial_board.CurrentGameBoard
-                    if BoardArray[row][col] != 0:
-                        break
+    if MRV == False and LCV == False and Degree == False:
+        # print domains
+        for row in range(size):
+            for col in range(size):
                 if BoardArray[row][col]==0:
-                    return False
+                    for val in domains[(row, col)]:
+                        initial_board.consistencyChecks += 1
+                        found = checkBoard(row, col, val, BoardArray)
+                        initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
+                        BoardArray = initial_board.CurrentGameBoard
+                        if BoardArray[row][col] != 0:
+                            break
+                    if BoardArray[row][col]==0:
+                        return False
     return initial_board
 
 
@@ -304,9 +328,8 @@ def forwardChecking(row, col, val, domains, BoardArray):
 def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains):
     if found == False:
         initial_board.set_value(row, col, val)
-        # assignments += 1
         tempDomains = copy.copy(domains)
-        domains[(row, col)] = []
+        # domains[(row, col)] = []
         BoardArray = initial_board.CurrentGameBoard
         if(forward_checking == True):
             # remove the value from the domains of all open variables in the same row
