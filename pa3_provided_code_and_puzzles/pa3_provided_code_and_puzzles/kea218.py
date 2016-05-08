@@ -4,7 +4,7 @@
 # Group work statement: All group members were present and contributing during all work on this project.
 
 #!/usr/bin/env python
-import struct, string, math, copy
+import struct, string, math, copy, time
 
 class SudokuBoard:
     """This will be the sudoku board game object your player will manipulate."""
@@ -13,7 +13,7 @@ class SudokuBoard:
       """the constructor for the SudokuBoard"""
       self.BoardSize = size #the size of the board
       self.CurrentGameBoard= board #the current state of the game board
-      self.consistencyChecks = 0
+      self.consistencyChecks = 0 # the total number of values tried for all variables
 
 
     def set_value(self, row, col, value):
@@ -121,13 +121,16 @@ def init_board(file_name):
 
 def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     LCV = False):
-    """Takes an initial SudokuBoard and solves it using back tracking, and zero
+    """Takes an initial SudokuBoard and calls a helper function to solve it using back tracking, and zero
     or more of the heuristics and constraint propagation methods (determined by
     arguments). Returns the resulting board solution. """
+    start = time.time()
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
     subsquare = int(math.sqrt(size))
-    domains = {}
+    domains = {}  # a dictionary where a (row, col) tuple is the key and an array of possible values is the value
+
+    # initialize the domains of each unassigned cell to 1-size, and the domains of assigned cells to []
     for row in range(size):
         for col in range(size):
             if BoardArray[row][col] == 0:
@@ -135,7 +138,7 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
             else:
                 domains[(row,col)] = []
 
-    # Remove initially set values from the domains of affected cells (same row, col, square)
+    # Remove the initial board's set values from the domains of affected cells (same row, col, square)
     if forward_checking:
         for row in range(size):
             for col in range(size): 
@@ -143,147 +146,180 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
                 if val != 0:
                     domains = forwardChecking(row,col,val,domains,BoardArray)
 
-    return solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
+    # pass the domains and the start time to the helper function to solve
+    return solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains, start)
 
-def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains):
-    # Upper bound on consistency checks
-    maxCon = 1000000
+def solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains, start):
+    """Takes an initial SudokuBoard to solve it using back tracking, and zero
+    or more of the heuristics and constraint propagation methods (determined by
+    arguments) by keeping track of the domains of possible values for each variable.
+     Times out after ten minutes. Returns the resulting board solution. """
+    maxTime = 600 # Upper bound on time
     BoardArray = initial_board.CurrentGameBoard
     size = len(BoardArray)
-    if MRV == True:
-        mrvKeys = sortByMRV(domains)
+
+    if MRV == True:     # check the variables in order of increasing number of values in their domains
+        mrvKeys = sortByMRV(domains)    # determine the order to check the variables
         for cell in mrvKeys:
             row = cell[0]
             col = cell[1]
-            if BoardArray[row][col] == 0:
-                for val in domains[(row, col)]:
-                    initial_board.consistencyChecks += 1
-                    found = checkBoard(row, col, val, BoardArray)
-                    initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                    BoardArray = initial_board.CurrentGameBoard
-                    if BoardArray[row][col] != 0:
-                        break
-                if BoardArray[row][col] == 0:
+            if BoardArray[row][col] == 0:   # only perform a check if the cell is unassigned
+                for val in domains[(row, col)]:     # no set ordering of the values in MRV
+                    curTime = time.time() - start
+                    if curTime < maxTime:           # only keep checking if it has been less than 10 min
+                        initial_board.consistencyChecks += 1    # for each value it tries, increment the consistency checks count
+                        found = checkBoard(row, col, val, BoardArray)   # check if the value is already in the row, col, or square
+                        if found == False:
+                            # try the value by making recursive calls with forward checking to fill the board:
+                            initial_board, domains = checkVal(initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains, start)
+                            BoardArray = initial_board.CurrentGameBoard # since initial_board has changed, update BoardArray
+                        if BoardArray[row][col] != 0:  # if the value was not rejected, don't try any more
+                            break
+                curTime = time.time() - start
+                # if all values were tried and none worked and there's still time, return failure:
+                if BoardArray[row][col] == 0 and curTime < maxTime:
                     return False
     if LCV == True:
-        # the value that is in the fewest domains for other open variables in its row, col, and square
-        for row in range(size):
+        # check the next value that is in the fewest domains for other open variables in its row, col, and square
+        for row in range(size):     # no set ordering of the variables in LCV
             for col in range(size):
-                if BoardArray[row][col]==0:
-                    # print domains, 'domains before sorted vals'
-                    sortedVals = sortByLCV(row, col, domains, size)
-                    # print sortedVals, 'domains after sorted vals'
+                if BoardArray[row][col]==0:  # only perform a check if the cell is unassigned
+                    sortedVals = sortByLCV(row, col, domains, size)     # sort the domain of the variable
                     for val in sortedVals:
-                        initial_board.consistencyChecks += 1
-                        found = checkBoard(row, col, val, BoardArray)
-                        initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                        # print domains,"domains after checkVal"
-                        BoardArray = initial_board.CurrentGameBoard
-                        if BoardArray[row][col] != 0:
-                            break
-                    if BoardArray[row][col] == 0:
+                        curTime = time.time() - start
+                        if curTime < maxTime:       # check how long it has been running
+                            initial_board.consistencyChecks += 1    # for each value tried, increment the consistency checks count
+                            found = checkBoard(row, col, val, BoardArray)   # make sure the val is not already in the row, col, square
+                            if found == False:
+                                # try the value by making recursive calls with forward checking to fill the board:
+                                initial_board, domains = checkVal(initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains, start)
+                                BoardArray = initial_board.CurrentGameBoard # since initial_board has changed, update BoardArray
+                            if BoardArray[row][col] != 0:  # if the value was not rejected, don't try any more
+                                break
+                    curTime = time.time() - start
+                    # if all values were tried and none worked and there's still time, return failure:
+                    if BoardArray[row][col] == 0 and curTime < maxTime:
                         return False
 
     if Degree == True:
-        # the variable with the most open variables in its row, col, and square
-        degKeys = sortByDegree(BoardArray)
+        # check the next variable with the most open variables in its row, col, and square
+        degKeys = sortByDegree(BoardArray)  # sort the variables
         for cell in degKeys:
             row = cell[0]
             col = cell[1]
-            for val in domains[(row, col)]:
-                initial_board.consistencyChecks += 1
-                found = checkBoard(row, col, val, BoardArray)
-                initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                BoardArray = initial_board.CurrentGameBoard
-                if BoardArray[row][col] != 0:
-                    break
-            if BoardArray[row][col]==0:
+            for val in domains[(row, col)]:  # no set ordering of the values for Degree
+                curTime = time.time() - start
+                if curTime < maxTime:   # check how long it has been running
+                    initial_board.consistencyChecks += 1  # for each value tried, increment the consistency checks count
+                    found = checkBoard(row, col, val, BoardArray)  # make sure the val is not already in the row, col, square
+                    if found == False:
+                        # try the value by making recursive calls with forward checking to fill the board:
+                        initial_board, domains = checkVal(initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains, start)
+                        BoardArray = initial_board.CurrentGameBoard # since initial_board has changed, update BoardArray
+                    if BoardArray[row][col] != 0:  # if the value was not rejected, don't try any more
+                        break
+            curTime = time.time() - start
+            # if all values were tried and none worked and there's still time, return failure:
+            if BoardArray[row][col]==0 and curTime < maxTime:
                 return False
 
-    if MRV == False and LCV == False and Degree == False:
-        # print domains
-        for row in range(size):
+    if MRV == False and LCV == False and Degree == False:  # just backtracking and possibly forward checking
+        for row in range(size):  # no set ordering for the variables
             for col in range(size):
-                if BoardArray[row][col]==0:
-                    for val in domains[(row, col)]:
-                        if initial_board.consistencyChecks < maxCon:
-                            initial_board.consistencyChecks += 1
-                            found = checkBoard(row, col, val, BoardArray)
-                            initial_board, domains = checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains)
-                            BoardArray = initial_board.CurrentGameBoard
-                            if BoardArray[row][col] != 0:
+                if BoardArray[row][col]==0:  # only perform a check if the cell is unassigned
+                    for val in domains[(row, col)]:  # no set ordering for the values
+                        curTime = time.time() - start
+                        if curTime < maxTime:  # check how long it has been running
+                            initial_board.consistencyChecks += 1  # for each value tried, increment the consistency checks count
+                            found = checkBoard(row, col, val, BoardArray)   # make sure the val is not already in the row, col, square
+                            if found == False:
+                                # try the value by making recursive calls with forward checking to fill the board:
+                                initial_board, domains = checkVal(initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains, start)
+                                BoardArray = initial_board.CurrentGameBoard # since initial_board has changed, update BoardArray
+                            if BoardArray[row][col] != 0:  # if the value was not rejected, don't try any more
                                 break
-                    if BoardArray[row][col]==0 and initial_board.consistencyChecks < maxCon:
+                    curTime = time.time() -start
+                    # if all values were tried and none worked and there's still time, return failure:
+                    if BoardArray[row][col]==0 and curTime < maxTime:
                         return False
+
+    # even if the board is not complete, always return it
     return initial_board
 
 
 def sortByMRV(domains):
+    """ sorts the variables by increasing length of their domains, returns an array of (row, col) tuples"""
     return sorted(domains, key=lambda k: len(domains[k]), reverse=False)
 
 
 def sortByLCV(row, col, domains, size):
-# sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
-    constraints ={}
+    """ sorts the values in the domain at (row, col) according to the least number of variables
+    in the row, col, or square that also have that value in their domains, returns the sorted values as an array"""
+
+    constraints ={}  # keeps track of how many open variables in the same row, col, or square also have that val in their domain
     subsquare = int(math.sqrt(size))
     SquareRow = row // subsquare
     SquareCol = col // subsquare
-    for val in domains[(row, col)]:
+    for val in domains[(row, col)]:  # checks each val
         count = 0
-        for row1 in range(size):
+        for row1 in range(size):    # checks the column
             if val in domains[(row1, col)]:
                 count += 1
-        for col1 in range(size):
+        for col1 in range(size):  # checks the row
             if val in domains[(row, col1)]:
                 count += 1
-        for i in range(subsquare):   # if i is already in the square
+        for i in range(subsquare):   # checks the square
             for j in range(subsquare):
                 if val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
                     count += 1
-        constraints[val] = count
-    return sorted(constraints, key=lambda k: constraints[k], reverse=True)
+        constraints[val] = count  # adds the total count as the value in the dictionary
+    return sorted(constraints, key=lambda k: constraints[k], reverse=True)  # sorts the dictionary, returns the values as an array
 
 
 def sortByDegree(BoardArray):
-# sort the values according to the least number of variables in the row, col, or square that also have that value in their domains
-# *** remove double counting
+    """ sorts the open variables by decreasing number of open variables in its
+    row, col, or square (checks the most first). Returns an array of the sorted variables as (row, col) tuples"""
+
     openVars ={}
     size = len(BoardArray)
     subsquare = int(math.sqrt(size))
-    for row in range(size):
+    for row in range(size):     # iterate over whole board
         for col in range(size):
-            if BoardArray[row][col] == 0:
+            if BoardArray[row][col] == 0:   # only examine open cells
                 count = 0
                 SquareRow = row // subsquare
                 SquareCol = col // subsquare
-                for col1 in BoardArray[row]:  # if i is already in the row
+                for col1 in BoardArray[row]:  # checks how many are unassigned in the same row
                     if col1 == 0:
                         count += 1
-                for row1 in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
+                for row1 in [BoardArray[i][col] for i in range(size)]:  # checks how many are unassigned in the same col
                     if row1 == 0:
                         count += 1
-                for i in range(subsquare):   # if i is already in the square
+                for i in range(subsquare):   # checks how many are unassigned in the same square
                     for j in range(subsquare):
                         row1 = SquareRow*subsquare+i
                         col1 = SquareCol*subsquare+j
                         if BoardArray[row1][col1] == 0:
                             count += 1
-                openVars[(row, col)] = count
+                openVars[(row, col)] = count  # makes the total count of open variables the (row, col)'s value
+    # sorts the (row, col) tuples (the keys) by decreasing value
     return sorted(openVars, key=lambda k: openVars[k], reverse=True)
 
 
 
 def checkBoard(row, col, val, BoardArray):
+    """ returns true if val is already assigned to a variable in the same row, col, or square, false otherwise"""
+
     size = len(BoardArray)
     subsquare = int(math.sqrt(size))
     SquareRow = row // subsquare
     SquareCol = col // subsquare
     found = False
-    if val in BoardArray[row]:  # if i is already in the row
+    if val in BoardArray[row]:  # if val is already in the row
         found = True
-    if val in [BoardArray[i][col] for i in range(size)]:  # if i is already in the col
+    if val in [BoardArray[i][col] for i in range(size)]:  # if val is already in the col
         found = True
-    for i in range(subsquare):   # if i is already in the square
+    for i in range(subsquare):   # if val is already in the square
         for j in range(subsquare):
             if((BoardArray[SquareRow*subsquare+i][SquareCol*subsquare+j] == val)):
                 found = True
@@ -291,52 +327,54 @@ def checkBoard(row, col, val, BoardArray):
 
 
 def forwardChecking(row, col, val, domains, BoardArray):
-    # print domains, "*"
+    """ removes val from the domains of all open variables in row, col, or square. Returns updated domains """
+
     size = len(BoardArray)
     subsquare = int(math.sqrt(size))
     SquareRow = row // subsquare
     SquareCol = col // subsquare
-    for row1 in range(size):
-        if domains[(row1, col)] != [] and val in domains[(row1, col)]:
+    for row1 in range(size):  # check every cell in the row
+        if domains[(row1, col)] != [] and val in domains[(row1, col)]: # if an open variable has val in its domain
             temp = []
             for num in domains[(row1, col)]:
                 if num != val:
                     temp.append(num)
-            domains[(row1, col)] = copy.copy(temp)
-        # remove the value from the domains of all open variables in the same col
-    for col1 in range(size):
-        if domains[(row, col1)] != [] and val in domains[(row, col1)]:
+            domains[(row1, col)] = copy.copy(temp)  # update domains
+
+    for col1 in range(size): # check every cell in the col
+        if domains[(row, col1)] != [] and val in domains[(row, col1)]:  # if an open variable has val in its domain
             temp = []
             for num in domains[(row, col1)]:
                 if num != val:
                     temp.append(num)
-            domains[(row, col1)] = copy.copy(temp)
-        # remove the value from the domains of all open variables in the same col
-    for i in range(subsquare):
+            domains[(row, col1)] = copy.copy(temp)  # update domains
+
+    for i in range(subsquare):  # check every cell in the square
         for j in range(subsquare):
+            # if an open variable has val in its domain:
             if domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] != [] and val in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
                 temp = []
                 for num in domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)]:
                     if num != val:
                         temp.append(num)
-                domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = copy.copy(temp)
-    # print domains, "**"
+                domains[(SquareRow*subsquare+i, SquareCol*subsquare+j)] = copy.copy(temp) # update domains
     return domains
 
-def checkVal(found, initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains):
-    if found == False:
-        initial_board.set_value(row, col, val)
-        tempDomains = copy.copy(domains)
-        # domains[(row, col)] = []
-        BoardArray = initial_board.CurrentGameBoard
-        if(forward_checking == True):
-            # remove the value from the domains of all open variables in the same row
-            # print domains, 'before forward checking'
-            domains = forwardChecking(row, col, val, domains, BoardArray)
-            # print domains, 'after forward checking'
-        result = solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains)
-        if result == False:
-            initial_board.set_value(row, col, 0)
-            domains = copy.copy(tempDomains)
+
+def checkVal(initial_board, row, col, val, forward_checking, MRV, Degree, LCV, domains, start):
+    """ tentatively assigns val to the cell at (row, col), then applies forward checking if necessary, and
+    makes a recursive call to domains to see if the value causes issues later (backtracking). If the recursive call
+    causes problems, the value is reset to 0. Returns the updated board and domains."""
+
+    initial_board.set_value(row, col, val)
+    tempDomains = copy.copy(domains) # keeps a copy of domains in case it must be reset
+    domains[(row, col)] = []
+    BoardArray = initial_board.CurrentGameBoard
+    if(forward_checking == True):
+        domains = forwardChecking(row, col, val, domains, BoardArray)
+    result = solveWithDomains(initial_board, forward_checking, MRV, Degree, LCV, domains, start)
+    if result == False:  # if it failed, reset the board and domains
+        initial_board.set_value(row, col, 0)
+        domains = copy.copy(tempDomains)
 
     return initial_board, domains
